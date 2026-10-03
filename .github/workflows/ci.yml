@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - run: uv sync --frozen
+      - name: Lint
+        run: uv run ruff check . && uv run ruff format --check .
+      - name: Typecheck
+        run: uv run mypy src
+      - name: Test
+        # Database tests start PostGIS with testcontainers (Docker is available on the runner).
+        # The live Nebius tests run only when the NEBIUS_API_KEY secret is configured.
+        run: uv run pytest
+        env:
+          NEBIUS_API_KEY: ${{ secrets.NEBIUS_API_KEY }}
+          PLEB_LIVE_NEBIUS: ${{ secrets.NEBIUS_API_KEY != '' && '1' || '' }}
+      - name: Docker image builds
+        run: docker build -t pleb-agent . && docker run --rm pleb-agent --help
