@@ -1,0 +1,64 @@
+[project]
+name = "pleb-agent"
+version = "0.1.0"
+description = "Finds and extracts happy hour schedules for Pleb."
+readme = "README.md"
+authors = [
+    { name = "Claude", email = "noreply@anthropic.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "httpx>=0.28.1",
+    "pillow>=12.3.0",
+    "psycopg[binary]>=3.3.6",
+    "pydantic-ai-slim[openai]>=2.54.0",
+    "pydantic-settings>=2.15.0",
+    "pypdf>=6.19.0",
+    "pypdfium2>=5.13.0",
+    "trafilatura>=2.3.0",
+    "typer>=0.27.2",
+]
+
+[project.scripts]
+pleb-agent = "pleb_agent:main"
+
+[build-system]
+requires = ["uv_build>=0.8.17,<0.9.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "mypy>=2.4.0",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "ruff>=0.16.10",
+    "testcontainers[postgres]>=4.15.0",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "ASYNC", "RUF"]
+# En and em dashes in regexes are deliberate: menus write "4–7pm".
+ignore = ["RUF001"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["ASYNC240"]
+
+[tool.mypy]
+strict = true
+packages = ["pleb_agent"]
+mypy_path = "src"
+
+[[tool.mypy.overrides]]
+module = ["trafilatura", "pypdfium2", "lxml", "lxml.*", "testcontainers.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
+testpaths = ["tests"]
+markers = ["live: calls the real Nebius API (needs PLEB_LIVE_NEBIUS=1)"]

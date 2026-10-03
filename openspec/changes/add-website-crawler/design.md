@@ -38,10 +38,10 @@ pleb-agent is empty apart from OpenSpec scaffolding. It writes into the schema p
 
 **Publishing in one transaction per venue.** `SELECT ... FOR UPDATE` on the venue row, apply the precedence check, `DELETE` that venue's `happy_hours`, `INSERT` the new rows, and set `crawl_status`. The precedence rank is `owner(4) > field_photo(3) > website(2) > user_upload(1)`, using the highest-ranked existing row and its `observed_at`.
 
-**Spend accounting** uses the token usage Pydantic AI reports, times per-model prices from configuration (`PLEB_PRICE_PER_MTOK_IN/OUT_<MODEL>`). The estimate is conservative: unknown models count at the highest configured price.
+**Spend accounting** uses the token usage Pydantic AI reports, times prices from configuration. As built, prices are one in/out pair per role (`PLEB_TEXT_PRICE_IN/OUT`, `PLEB_VISION_PRICE_IN/OUT`) rather than per model, since each role uses one configured model; the defaults are deliberately high so an unconfigured run overestimates. The cap is checked before each model call, so concurrent sites can overshoot it by at most one call each.
 
 **Testing without the internet.**
-- Sites are served by a local test HTTP server from fixture directories, each a small fake venue site exercising one behavior (robots disallow, terms prohibition, 403, JSON-LD menu, PDF menu, image menu, no happy hour).
+- Sites are faked in unit and pipeline tests with `httpx.MockTransport` (fixed responses by URL, every request recorded), one small fake venue site per behavior (robots disallow, terms prohibition, 403, JSON-LD menu, PDF menu, image menu, no happy hour). That replaces the planned local HTTP server: no ports or threads, and pacing is tested with an injected clock. The integration check (`scripts/integration_check.py`) does serve fixture directories over real local HTTP.
 - Models are replaced with Pydantic AI's `FunctionModel`, which returns canned structured output keyed by input. That checks prompts are sent only past the gate, and that dry run and the spend cap behave.
 - The database is PostGIS via testcontainers (or `PLEB_TEST_DATABASE_URL`). The schema comes from a snapshot of pleb-api's migration (`tests/schema/pleb_api.sql`), refreshed with `scripts/sync-schema.sh ../pleb-api`. A test fails if the snapshot's header hash doesn't match the file it was copied from, when that file is present.
 - One opt-in live test (`PLEB_LIVE_NEBIUS=1`) runs a real extraction against Nebius to confirm the endpoint, model names and structured output work. CI skips it unless the secret is configured.
@@ -55,6 +55,12 @@ pleb-agent is empty apart from OpenSpec scaffolding. It writes into the schema p
 - [Schema drift between the pleb-api migration and the snapshot] → Hash check in tests plus the sync script. A shared migrations package can come later if it bites.
 - [Nebius model names or structured-output support change] → Models are configuration, and the live smoke test catches it.
 - [Sites built with JS that render nothing in plain HTML] → They're reported as `not_listed`. A headless browser fallback is a follow-up change, since it adds a heavy dependency.
+
+**Notes from implementation:**
+- Images are looked at whenever a page's text gives no happy hour, not only when the text has no signal: a "Happy Hour" nav link or heading over a menu photo passes the gate, the text model finds nothing, and the image holds the schedule.
+- Menu images are fetched only from the venue's own site, like pages. Images served from a site builder's CDN (Squarespace, Wix and similar) are skipped for now; allowing a short list of builder CDNs is a possible follow-up.
+- Submissions are written after extraction, so a run stopped by the spend cap leaves no record of the page and the next run extracts it. An unchanged page that produced a happy hour before keeps the venue `found` without re-publishing.
+- A site that can't be reached (DNS, connection or timeout errors) leaves the venue's crawl status unchanged and is listed in the report, so it is retried next run.
 
 ## Open Questions
 
