@@ -1,0 +1,48 @@
+schema: spec-driven
+
+context: |
+  Pleb is a happy hour finder (v1 launch area: West Village, NYC). Three repos:
+  pleb-web (Next.js), pleb-api (Go, read API over Postgres+PostGIS), pleb-agent
+  (Python, scheduled extraction jobs). Postgres schema and migrations live in pleb-api only;
+  other repos never migrate. Local dev is docker compose (compose file in pleb-api,
+  repos checked out as siblings); no local k8s.
+  Data sourcing rules (legal, non-negotiable): v1 uses no Google Places API. Never scrape
+  Google Maps, Yelp, Resy, OpenTable or Instagram. Venues come from OpenStreetMap (ODbL,
+  credit required) and NY liquor license open data. Happy hours come from venue websites
+  (honor robots.txt and site terms, rate-limit, stop on block or request), Andrew's field
+  photos, and user uploads. Store extracted facts plus a source link; never republish menu
+  images, PDFs or prose. Source precedence: owner (v2) > field_photo > website > user_upload.
+  This repo: Python 3.12, uv, Pydantic AI against Nebius Token Factory's OpenAI-compatible API
+  (text models for HTML/PDF, vision models for images). Every model call sits behind a cheap
+  keyword/hash gate, and every run has --dry-run and spend caps.
+
+# Project context (optional)
+# Add only constraints that should guide OpenSpec artifacts and workflows.
+# Include constraints an agent cannot infer by reading the code.
+# Keep general project documentation and discoverable codebase facts out.
+# Example:
+#   context: |
+#     Designs and tasks must cover Windows, macOS, and Linux
+#     Write all artifacts in Spanish
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+# Example:
+#   rules:
+#     proposal:
+#       - Keep proposals under 500 words
+#       - Always state what is out of scope
+#     tasks:
+#       - Break tasks into chunks of max 2 hours
+
+# Per-operation guidance (optional)
+# Add advisory guidance for how apply and archive work should be conducted.
+# This is separate from artifact rules above.
+# Example:
+#   operations:
+#     apply:
+#       guidance:
+#         - Keep test summaries concise
+#     archive:
+#       guidance:
+#         - Summarize the archive outcome before finishing
